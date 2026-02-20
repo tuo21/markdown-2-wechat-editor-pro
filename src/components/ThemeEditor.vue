@@ -530,31 +530,11 @@ const lineHeightOptions = ['1.5', '1.6', '1.75', '1.8', '2.0'];
         
         <!-- 预览内容区 -->
         <div class="flex-1 flex items-center justify-center p-8 overflow-auto">
-          <div class="relative">
-            <!-- 手机外框装饰 -->
-            <div class="absolute -top-3 -bottom-3 -left-3 -right-3 bg-gray-300 dark:bg-gray-700 rounded-2xl shadow-xl"></div>
-            
-            <!-- 模拟手机屏幕（375px 宽度） -->
-            <div
-              class="relative w-[375px] bg-white rounded-xl shadow-2xl overflow-hidden ring-1 ring-gray-900/5"
-              style="min-height: 600px;"
-            >
-              <!-- 微信公众号头部 -->
-              <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
-                <div class="flex items-center justify-center">
-                  <span class="text-xs text-gray-500">微信公众号</span>
-                </div>
-              </div>
-              
-              <!-- 预览内容 -->
-              <div class="p-4">
-                <Preview
-                  :content="content"
-                  :theme="editingTheme"
-                />
-              </div>
-            </div>
-          </div>
+          <!-- 直接使用 Preview 组件，不添加额外装饰 -->
+          <Preview
+            :content="content"
+            :theme="editingTheme"
+          />
         </div>
       </div>
     </div>

@@ -72,7 +72,7 @@ const editingTheme = ref<Theme | null>(null);   // 正在编辑的主题
  * Preview 组件的引用
  * 用于获取预览内容以便复制
  */
-const previewComponentRef = ref<{ previewContentRef: { value: HTMLDivElement | null } } | null>(null);
+const previewComponentRef = ref<{ previewContentRef: HTMLDivElement | null } | null>(null);
 
 // ==================== 计算属性 ====================
 
@@ -110,9 +110,9 @@ const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info')
  * 将预览内容转换为微信兼容格式并复制到剪贴板
  */
 const handleCopy = async () => {
-  if (!previewComponentRef.value?.previewContentRef?.value) return;
+  if (!previewComponentRef.value?.previewContentRef) return;
   
-  const previewContent = previewComponentRef.value.previewContentRef.value as HTMLElement;
+  const previewContent = previewComponentRef.value.previewContentRef as HTMLElement;
   if (!previewContent) return;
 
   const success = await copyWeChatHTML(previewContent);

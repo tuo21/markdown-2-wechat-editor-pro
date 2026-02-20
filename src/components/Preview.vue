@@ -138,14 +138,8 @@ watch(() => props.theme, () => {
 <template>
   <!-- 预览容器：灰色背景，垂直布局 -->
   <div class="flex flex-col h-full bg-gray-100 dark:bg-gray-800">
-    <!-- 预览标题栏 -->
-    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-      <h2 class="text-lg font-semibold text-gray-800 dark:text-white">微信预览</h2>
-      <span class="text-sm text-gray-500 dark:text-gray-400">{{ theme.name }}</span>
-    </div>
-    
-    <!-- 预览内容区：居中显示手机模拟器 -->
-    <div class="flex-1 flex items-center justify-center p-8 overflow-auto">
+    <!-- 预览内容区：显示手机模拟器，顶部对齐避免内容截断 -->
+    <div class="flex-1 flex items-start justify-center p-8 overflow-auto">
       <div class="relative">
         <!-- 手机外框装饰（阴影效果） -->
         <div class="absolute -top-3 -bottom-3 -left-3 -right-3 bg-gray-300 dark:bg-gray-700 rounded-2xl shadow-xl"></div>
@@ -155,13 +149,6 @@ watch(() => props.theme, () => {
           class="relative w-[375px] bg-white rounded-xl shadow-2xl overflow-hidden"
           style="min-height: 600px;"
         >
-          <!-- 微信公众号头部模拟 -->
-          <div class="bg-gray-100 px-4 py-2 border-b border-gray-200">
-            <div class="flex items-center justify-center">
-              <span class="text-xs text-gray-500">微信公众号</span>
-            </div>
-          </div>
-          
           <!-- 预览内容（应用主题样式） -->
           <div class="p-4">
             <div
