@@ -42,8 +42,9 @@ export function useClipboard() {
       // 将计算好的样式应用到克隆的元素上
       cloneElements.forEach((el, index) => {
         const originalEl = allElements[index];
+        if (!originalEl) return;
         const styleString = computedStyles.get(originalEl) || '';
-        
+
         if (styleString) {
           el.setAttribute('style', styleString);
         }

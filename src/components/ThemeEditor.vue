@@ -253,7 +253,7 @@ const lineHeightOptions = ['1.5', '1.6', '1.75', '1.8', '2.0'];
     <div class="flex-1 flex overflow-hidden">
       
       <!-- ==================== 左侧：样式编辑面板 ==================== -->
-      <div class="w-[380px] flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+      <div class="w-[400px] flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
         
         <!-- 分类标签栏 -->
         <div class="flex border-b border-gray-200 dark:border-gray-700">
@@ -413,18 +413,18 @@ const lineHeightOptions = ['1.5', '1.6', '1.75', '1.8', '2.0'];
                   <!-- 文字颜色 -->
                   <div class="space-y-1">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">颜色</label>
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-2">
                       <input
                         type="color"
                         :value="editableStyles[item.key]?.color || '#000000'"
                         @input="(e) => updateStyle(item.key, 'color', (e.target as HTMLInputElement).value)"
-                        class="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                        class="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer flex-shrink-0"
                       />
                       <input
                         type="text"
                         :value="editableStyles[item.key]?.color || ''"
                         @input="(e) => updateStyle(item.key, 'color', (e.target as HTMLInputElement).value)"
-                        class="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
+                        class="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
                       />
                     </div>
                   </div>
@@ -432,12 +432,12 @@ const lineHeightOptions = ['1.5', '1.6', '1.75', '1.8', '2.0'];
                   <!-- 背景颜色 -->
                   <div class="space-y-1">
                     <label class="text-xs font-medium text-gray-600 dark:text-gray-400">背景色</label>
-                    <div class="flex items-center gap-1">
+                    <div class="flex items-center gap-2">
                       <input
                         type="color"
                         :value="editableStyles[item.key]?.backgroundColor || '#ffffff'"
                         @input="(e) => updateStyle(item.key, 'backgroundColor', (e.target as HTMLInputElement).value)"
-                        class="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                        class="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer flex-shrink-0"
                       />
                       <input
                         type="text"
