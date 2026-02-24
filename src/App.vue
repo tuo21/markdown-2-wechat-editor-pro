@@ -8,7 +8,7 @@
  * 3. 处理本地存储的读写
  */
 
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 // 子组件导入
 import Editor from './components/Editor.vue';      // Markdown 编辑器
 import Preview from './components/Preview.vue';    // 微信预览组件
@@ -236,6 +236,16 @@ watch(currentThemeId, (newVal) => {
 onMounted(() => {
   if (isDark.value) {
     document.documentElement.classList.add('dark');
+  }
+});
+
+/**
+ * 组件卸载时，清理定时器防止内存泄漏
+ */
+onUnmounted(() => {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
+    saveTimeout = null;
   }
 });
 </script>

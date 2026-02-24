@@ -4,12 +4,13 @@
 
 ## 功能特性
 
-- ✨ **Markdown 实时预览：左侧编辑，右侧实时渲染
-- 🎨 **多种主题样式：内置默认简约、科技蓝、文艺黑三套主题
-- 📋 **一键复制为微信兼容格式：自动内联样式，完美适配公众号
-- 💾 **自动保存内容：使用 localStorage 自动保存，刷新不丢失
-- 🌙 **暗黑模式支持：UI 支持亮色/暗色切换
-- 📱 **手机模拟预览：375px 宽度，模拟手机端效果
+- ✨ **Markdown 实时预览**：左侧编辑，右侧实时渲染
+- 🎨 **多种主题样式**：内置默认简约、科技蓝、文艺黑三套主题
+- 📋 **一键复制为微信兼容格式**：自动内联样式，完美适配公众号
+- 💾 **自动保存内容**：使用 localStorage 自动保存，刷新不丢失
+- 🌙 **暗黑模式支持**：UI 支持亮色/暗色切换
+- 📱 **手机模拟预览**：375px 宽度，模拟手机端效果
+- 🎨 **自定义主题编辑器**：可视化编辑主题样式，实时预览
 
 ## 快速开始
 
@@ -44,13 +45,13 @@ npm run build
 
 ## 技术栈
 
-- Vue 3.4+ (Composition API, `<script setup>`
-- TypeScript 5.0+
-- Vite 5.0+
-- TailwindCSS 3.4+
+- Vue 3.5+ (Composition API, `<script setup>`)
+- TypeScript 5.9+
+- Vite 7.0+
+- TailwindCSS 4.0+
 - markdown-it
 - lucide-vue-next
-- localStorage
+- DOMPurify
 
 ## 项目结构
 
@@ -62,15 +63,18 @@ src/
 │   ├── Preview.vue      # 微信预览组件
 │   ├── Toolbar.vue      # 顶部工具栏
 │   ├── StyleConfig.vue  # 样式配置面板
+│   ├── ThemeEditor.vue  # 主题编辑器
 │   └── Toast.vue        # 提示框组件
 ├── composables/         # 组合式函数
 │   ├── useMarkdown.ts   # Markdown 解析逻辑
 │   ├── useClipboard.ts  # 复制逻辑
 │   └── useStorage.ts    # localStorage 封装
-├── styles/             # 样式
+├── styles/              # 样式
 │   ├── main.css         # Tailwind 样式
 │   └── themes.ts        # 主题定义
-├── types/              # TypeScript 类型
+├── types/               # TypeScript 类型
+├── utils/               # 工具函数
+│   └── styleConverter.ts # 样式转换工具
 ├── App.vue              # 主应用
 └── main.ts              # 入口文件
 ```
@@ -78,11 +82,12 @@ src/
 ## 部署
 
 构建完成后，可以将 `dist` 目录部署到任意静态资源托管服务，如：
-- Vercel
 - GitHub Pages
+- Vercel
 - Netlify
+- Gitee Pages
 - Nginx
 
 ## License
 
-MIT
+[MIT](LICENSE)
