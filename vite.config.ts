@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
 
 export default defineConfig(({ mode }) => {
-  const isProduction = mode === 'production'
+  const isProduction = process.env.NODE_ENV === 'production' || mode === 'production'
   const base = isProduction ? '/markdown-2-wechat-editor-pro/' : '/'
   
   return {
