@@ -29,9 +29,7 @@ const props = defineProps<Props>();
     <!-- 左侧：Logo 和标题 -->
     <div class="flex items-center space-x-3">
       <!-- Logo 图标 -->
-      <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-        <span class="text-white font-bold">We</span>
-      </div>
+      <img src="/icon.svg" alt="Logo" class="w-8 h-8 rounded-lg" />
       <!-- 应用标题 -->
       <h1 class="text-xl font-bold text-gray-800 dark:text-white">WeChat Editor Pro</h1>
     </div>
