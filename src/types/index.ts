@@ -29,11 +29,15 @@ export interface GlobalStyle {
   color: string;
   backgroundColor: string;
   fontFamily: string;
+  containerPadding?: string;    // 容器内边距，如 "25px 8px"
+  themeColor?: string;           // 主题色，统一控制装饰性色彩（边框、强调等），可被各元素单独覆盖
+  fontType?: 'serif' | 'sans-serif'; // 字体类型：衬线体 / 非衬线体
 }
 
 export interface Theme {
   id: string;
   name: string;
+  description?: string;           // 主题描述（可选）
   isCustom?: boolean;
   styles: {
     global: GlobalStyle;
@@ -53,6 +57,11 @@ export interface Theme {
     table: string | StyleProperties;
     th: string | StyleProperties;
     td: string | StyleProperties;
+    /* 扩展样式（微信编辑器常用） */
+    strong?: string;              // 加粗
+    em?: string;                  // 斜体
+    del?: string;                 // 删除线
+    figcaption?: string;          // 图片说明文字
   };
 }
 

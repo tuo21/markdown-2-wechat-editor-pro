@@ -8,7 +8,7 @@
  * 3. 使用等宽字体便于编辑代码
  */
 
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 // ==================== 组件接口定义 ====================
 
@@ -22,6 +22,14 @@ interface Emits {
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
+
+// 滚动容器引用（用于同步滚动）
+const editorScrollRef = ref<HTMLTextAreaElement | null>(null);
+
+// 暴露滚动容器引用
+defineExpose({
+  editorScrollRef,
+});
 
 // ==================== 计算属性 ====================
 
@@ -57,6 +65,7 @@ const handleInput = (e: Event) => {
     
     <!-- 文本输入区域 -->
     <textarea
+      ref="editorScrollRef"
       :value="modelValue"
       @input="handleInput"
       class="flex-1 w-full p-4 resize-none border-none outline-none font-mono text-sm leading-relaxed bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-200 placeholder-gray-400"

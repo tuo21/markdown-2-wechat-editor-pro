@@ -60,7 +60,7 @@ const editingTheme = ref<Theme>(JSON.parse(JSON.stringify(props.theme)));
  */
 const editableStyles = computed(() => {
   const result: Record<string, StyleProperties> = {};
-  const keys = ['h1', 'h2', 'h3', 'p', 'quote', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'table', 'th', 'td'] as const;
+  const keys = ['h1', 'h2', 'h3', 'p', 'quote', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'table', 'th', 'td', 'strong', 'em', 'del', 'figcaption'] as const;
   
   keys.forEach(key => {
     result[key] = ensureStyleProperties(editingTheme.value.styles[key]);
@@ -196,6 +196,10 @@ const categoryItems = {
     { key: 'table', label: '表格' },
     { key: 'th', label: '表头' },
     { key: 'td', label: '单元格' },
+    { key: 'strong', label: '加粗' },
+    { key: 'em', label: '斜体' },
+    { key: 'del', label: '删除线' },
+    { key: 'figcaption', label: '图片说明' },
   ],
 };
 
@@ -213,6 +217,17 @@ const fontWeightOptions = ['400', '500', '600', '700', '800', '900'];
  * 行高预设选项
  */
 const lineHeightOptions = ['1.5', '1.6', '1.75', '1.8', '2.0'];
+
+/**
+ * 根据字体类型获取推荐字体栈
+ */
+function getFontStack(type: 'serif' | 'sans-serif'): string {
+  const stacks: Record<string, string> = {
+    'sans-serif': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif',
+    'serif': '"Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, "Times New Roman", Optima-Regular, Cambria, Cochin, serif',
+  };
+  return stacks[type] || stacks['sans-serif'];
+}
 </script>
 
 <template>
@@ -282,63 +297,25 @@ const lineHeightOptions = ['1.5', '1.6', '1.75', '1.8', '2.0'];
           
           <!-- ===== 全局样式编辑 ===== -->
           <div v-if="activeCategory === 'global'" class="space-y-4">
-            <!-- 字体大小 -->
+            <!-- 主题颜色（统一装饰色） -->
             <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">字体大小</label>
-              <div class="flex gap-2">
-                <select
-                  :value="globalStyle.fontSize"
-                  @change="(e) => updateGlobalStyle('fontSize', (e.target as HTMLSelectElement).value)"
-                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
-                >
-                  <option v-for="size in fontSizeOptions" :key="size" :value="size">{{ size }}</option>
-                </select>
-                <input
-                  type="text"
-                  :value="globalStyle.fontSize"
-                  @input="(e) => updateGlobalStyle('fontSize', (e.target as HTMLInputElement).value)"
-                  class="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
-                />
-              </div>
-            </div>
-
-            <!-- 行高 -->
-            <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">行高</label>
-              <div class="flex gap-2">
-                <select
-                  :value="globalStyle.lineHeight"
-                  @change="(e) => updateGlobalStyle('lineHeight', (e.target as HTMLSelectElement).value)"
-                  class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
-                >
-                  <option v-for="lh in lineHeightOptions" :key="lh" :value="lh">{{ lh }}</option>
-                </select>
-                <input
-                  type="text"
-                  :value="globalStyle.lineHeight"
-                  @input="(e) => updateGlobalStyle('lineHeight', (e.target as HTMLInputElement).value)"
-                  class="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
-                />
-              </div>
-            </div>
-
-            <!-- 文字颜色 -->
-            <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">文字颜色</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">主题颜色</label>
               <div class="flex items-center gap-2">
                 <input
                   type="color"
-                  :value="globalStyle.color"
-                  @input="(e) => updateGlobalStyle('color', (e.target as HTMLInputElement).value)"
+                  :value="globalStyle.themeColor || '#c9a96e'"
+                  @input="(e) => updateGlobalStyle('themeColor', (e.target as HTMLInputElement).value)"
                   class="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer"
                 />
                 <input
                   type="text"
-                  :value="globalStyle.color"
-                  @input="(e) => updateGlobalStyle('color', (e.target as HTMLInputElement).value)"
+                  :value="globalStyle.themeColor || ''"
+                  @input="(e) => updateGlobalStyle('themeColor', (e.target as HTMLInputElement).value)"
                   class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
+                  placeholder="#c9a96e"
                 />
               </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">统一控制标题装饰、边框、强调等色彩，各元素可单独覆盖</p>
             </div>
 
             <!-- 背景颜色 -->
@@ -360,15 +337,62 @@ const lineHeightOptions = ['1.5', '1.6', '1.75', '1.8', '2.0'];
               </div>
             </div>
 
-            <!-- 字体 -->
+            <!-- 字体类型：衬线体 / 非衬线体 -->
             <div class="space-y-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">字体</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">字体类型</label>
+              <div class="flex gap-3">
+                <button
+                  type="button"
+                  @click="() => { updateGlobalStyle('fontType', 'sans-serif'); updateGlobalStyle('fontFamily', getFontStack('sans-serif')); }"
+                  :class="[
+                    'flex-1 px-3 py-2 rounded-lg border text-sm transition-colors',
+                    (globalStyle.fontType || 'sans-serif') === 'sans-serif'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
+                  ]"
+                >
+                  非衬线（黑体）
+                </button>
+                <button
+                  type="button"
+                  @click="() => { updateGlobalStyle('fontType', 'serif'); updateGlobalStyle('fontFamily', getFontStack('serif')); }"
+                  :class="[
+                    'flex-1 px-3 py-2 rounded-lg border text-sm transition-colors',
+                    globalStyle.fontType === 'serif'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
+                  ]"
+                >
+                  衬线（宋体）
+                </button>
+              </div>
+              <p class="text-xs text-gray-500 dark:text-gray-400">切换字体类型后自动填充推荐字体栈</p>
+            </div>
+
+            <!-- 自定义字体 -->
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">自定义字体</label>
               <input
                 type="text"
                 :value="globalStyle.fontFamily"
-                @input="(e) => updateGlobalStyle('fontFamily', (e.target as HTMLInputElement).value)"
+                @input="(e) => { updateGlobalStyle('fontFamily', (e.target as HTMLInputElement).value); }"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
+                placeholder="留空使用默认字体栈，或输入自定义字体..."
               />
+              <p class="text-xs text-gray-500 dark:text-gray-400">输入后将忽略上方字体类型选择，完全自定义</p>
+            </div>
+
+            <!-- 容器内边距 -->
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">容器内边距</label>
+              <input
+                type="text"
+                :value="globalStyle.containerPadding || '25px 8px'"
+                @input="(e) => updateGlobalStyle('containerPadding', (e.target as HTMLInputElement).value)"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
+                placeholder="如: 25px 8px（上下 左右）"
+              />
+              <p class="text-xs text-gray-500 dark:text-gray-400">预览区内容区域的内边距，格式同 CSS padding</p>
             </div>
           </div>
 

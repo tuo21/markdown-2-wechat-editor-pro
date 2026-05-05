@@ -8,7 +8,7 @@
  * 3. 处理本地存储的读写
  */
 
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 // 子组件导入
 import Editor from './components/Editor.vue';      // Markdown 编辑器
 import Preview from './components/Preview.vue';    // 微信预览组件
@@ -69,10 +69,83 @@ const isThemeEditorOpen = ref<boolean>(false);  // 编辑器是否打开
 const editingTheme = ref<Theme | null>(null);   // 正在编辑的主题
 
 /**
- * Preview 组件的引用
- * 用于获取预览内容以便复制
+ * 子组件引用
  */
-const previewComponentRef = ref<{ previewContentRef: HTMLDivElement | null } | null>(null);
+const editorRef = ref<{ editorScrollRef: HTMLTextAreaElement | null } | null>(null);
+const previewComponentRef = ref<{ previewContentRef: HTMLDivElement | null; previewScrollContainerRef: HTMLDivElement | null } | null>(null);
+
+// ==================== 同步滚动 ====================
+
+/** 是否正在由代码触发的滚动（防止循环触发） */
+let isSyncingFromEditor = false;
+let isSyncingFromPreview = false;
+
+/**
+ * 根据滚动比例设置目标元素的滚动位置
+ */
+function setScrollRatio(target: HTMLElement, ratio: number) {
+  const maxScroll = target.scrollHeight - target.clientHeight;
+  if (maxScroll > 0) {
+    target.scrollTop = ratio * maxScroll;
+  }
+}
+
+/**
+ * 获取元素当前的滚动比例 [0, 1]
+ */
+function getScrollRatio(el: HTMLElement): number {
+  const maxScroll = el.scrollHeight - el.clientHeight;
+  return maxScroll > 0 ? el.scrollTop / maxScroll : 0;
+}
+
+/**
+ * 处理编辑器滚动 → 同步预览区
+ */
+function handleEditorScroll() {
+  if (isSyncingFromPreview) return;
+  const ta = editorRef.value?.editorScrollRef;
+  const container = previewComponentRef.value?.previewScrollContainerRef;
+  if (!ta || !container) return;
+
+  isSyncingFromEditor = true;
+  const ratio = getScrollRatio(ta);
+  setScrollRatio(container, ratio);
+  requestAnimationFrame(() => { isSyncingFromEditor = false; });
+}
+
+/**
+ * 处理预览区滚动 → 同步编辑器
+ */
+function handlePreviewScroll() {
+  if (isSyncingFromEditor) return;
+  const ta = editorRef.value?.editorScrollRef;
+  const container = previewComponentRef.value?.previewScrollContainerRef;
+  if (!ta || !container) return;
+
+  isSyncingFromPreview = true;
+  const ratio = getScrollRatio(container);
+  setScrollRatio(ta, ratio);
+  requestAnimationFrame(() => { isSyncingFromPreview = false; });
+}
+
+/**
+ * 绑定/解绑同步滚动事件
+ */
+function bindSyncScroll() {
+  nextTick(() => {
+    const ta = editorRef.value?.editorScrollRef;
+    const container = previewComponentRef.value?.previewScrollContainerRef;
+    if (ta) ta.addEventListener('scroll', handleEditorScroll);
+    if (container) container.addEventListener('scroll', handlePreviewScroll);
+  });
+}
+
+function unbindSyncScroll() {
+  const ta = editorRef.value?.editorScrollRef;
+  const container = previewComponentRef.value?.previewScrollContainerRef;
+  if (ta) ta.removeEventListener('scroll', handleEditorScroll);
+  if (container) container.removeEventListener('scroll', handlePreviewScroll);
+}
 
 // ==================== 计算属性 ====================
 
@@ -237,6 +310,7 @@ onMounted(() => {
   if (isDark.value) {
     document.documentElement.classList.add('dark');
   }
+  bindSyncScroll();
 });
 
 /**
@@ -247,6 +321,7 @@ onUnmounted(() => {
     clearTimeout(saveTimeout);
     saveTimeout = null;
   }
+  unbindSyncScroll();
 });
 </script>
 
@@ -273,7 +348,7 @@ onUnmounted(() => {
     <div class="flex-1 flex overflow-hidden">
       <!-- 左侧：Markdown 编辑器（占 50% 宽度） -->
       <div class="w-1/2 border-r border-gray-200 dark:border-gray-700">
-        <Editor v-model="contentMarkdown" />
+        <Editor ref="editorRef" v-model="contentMarkdown" />
       </div>
       
       <!-- 右侧：微信预览区（占 50% 宽度） -->

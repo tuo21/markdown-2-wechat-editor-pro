@@ -36,6 +36,11 @@ const { renderMarkdown } = useMarkdown();
 const previewContentRef = ref<HTMLDivElement | null>(null);
 
 /**
+ * 预览区滚动容器引用（用于同步滚动）
+ */
+const previewScrollContainerRef = ref<HTMLDivElement | null>(null);
+
+/**
  * 动态样式元素的引用
  * 用于注入主题样式
  */
@@ -44,6 +49,7 @@ const styleElementRef = ref<HTMLStyleElement | null>(null);
 // 暴露给父组件
 defineExpose({
   previewContentRef,
+  previewScrollContainerRef,
 });
 
 // ==================== 计算属性 ====================
@@ -68,6 +74,7 @@ const themeStyles = computed(() => {
       color: ${t.styles.global.color};
       background-color: ${t.styles.global.backgroundColor};
       font-family: ${t.styles.global.fontFamily};
+      padding: ${t.styles.global.containerPadding || '16px'};
     }
     .preview-content h1 { ${ensureCSSString(t.styles.h1)} }
     .preview-content h2 { ${ensureCSSString(t.styles.h2)} }
@@ -85,6 +92,11 @@ const themeStyles = computed(() => {
     .preview-content table { ${ensureCSSString(t.styles.table)} }
     .preview-content th { ${ensureCSSString(t.styles.th)} }
     .preview-content td { ${ensureCSSString(t.styles.td)} }
+    /* 扩展样式（可选） */
+    ${t.styles.strong ? `.preview-content strong { ${ensureCSSString(t.styles.strong)} }` : ''}
+    ${t.styles.em ? `.preview-content em { ${ensureCSSString(t.styles.em)} }` : ''}
+    ${t.styles.del ? `.preview-content del, .preview-content s, .preview-content strike { ${ensureCSSString(t.styles.del)} }` : ''}
+    ${t.styles.figcaption ? `.preview-content figcaption { ${ensureCSSString(t.styles.figcaption)} }` : ''}
   `;
 });
 
@@ -139,7 +151,10 @@ watch(() => props.theme, () => {
   <!-- 预览容器：灰色背景，垂直布局 -->
   <div class="flex flex-col h-full bg-gray-100 dark:bg-gray-800">
     <!-- 预览内容区：显示手机模拟器，顶部对齐避免内容截断 -->
-    <div class="flex-1 flex items-start justify-center p-8 overflow-auto">
+    <div
+      ref="previewScrollContainerRef"
+      class="flex-1 flex items-start justify-center p-8 overflow-auto"
+    >
       <div class="relative">
         <!-- 手机外框装饰（阴影效果） -->
         <div class="absolute -top-3 -bottom-3 -left-3 -right-3 bg-gray-300 dark:bg-gray-700 rounded-2xl shadow-xl"></div>
