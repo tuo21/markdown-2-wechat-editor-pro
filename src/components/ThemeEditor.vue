@@ -64,7 +64,8 @@ const editableStyles = computed(() => {
   
   keys.forEach(key => {
     const style = editingTheme.value.styles[key];
-    result[key] = ensureStyleProperties(style !== undefined ? style : '');
+    const styleVal: string | StyleProperties = style !== undefined ? style : '';
+    result[key] = ensureStyleProperties(styleVal);
   });
   
   return result;
@@ -103,7 +104,7 @@ const updateStyle = (elementKey: string, property: string, value: string) => {
  * @param value 属性值
  */
 const updateGlobalStyle = (property: keyof GlobalStyle, value: string) => {
-  globalStyle.value[property] = value as GlobalStyle[keyof GlobalStyle];
+  (globalStyle.value as Record<string, unknown>)[property] = value;
 };
 
 /**
