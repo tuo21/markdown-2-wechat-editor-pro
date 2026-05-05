@@ -63,7 +63,8 @@ const editableStyles = computed(() => {
   const keys = ['h1', 'h2', 'h3', 'p', 'quote', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'table', 'th', 'td', 'strong', 'em', 'del', 'figcaption'] as const;
   
   keys.forEach(key => {
-    result[key] = ensureStyleProperties(editingTheme.value.styles[key]);
+    const style = editingTheme.value.styles[key];
+    result[key] = ensureStyleProperties(style !== undefined ? style : '');
   });
   
   return result;
@@ -102,7 +103,7 @@ const updateStyle = (elementKey: string, property: string, value: string) => {
  * @param value 属性值
  */
 const updateGlobalStyle = (property: keyof GlobalStyle, value: string) => {
-  globalStyle.value[property] = value;
+  globalStyle.value[property] = value as GlobalStyle[keyof GlobalStyle];
 };
 
 /**
@@ -214,19 +215,14 @@ const fontSizeOptions = ['12px', '14px', '15px', '16px', '18px', '20px', '22px',
 const fontWeightOptions = ['400', '500', '600', '700', '800', '900'];
 
 /**
- * 行高预设选项
- */
-const lineHeightOptions = ['1.5', '1.6', '1.75', '1.8', '2.0'];
-
-/**
  * 根据字体类型获取推荐字体栈
  */
 function getFontStack(type: 'serif' | 'sans-serif'): string {
-  const stacks: Record<string, string> = {
+  const stacks: Record<'serif' | 'sans-serif', string> = {
     'sans-serif': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif',
     'serif': '"Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, "Times New Roman", Optima-Regular, Cambria, Cochin, serif',
   };
-  return stacks[type] || stacks['sans-serif'];
+  return stacks[type];
 }
 </script>
 
