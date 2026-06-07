@@ -242,8 +242,11 @@ const handleCloseEditor = () => {
  * @param theme 保存的主题数据
  */
 const handleSaveTheme = (theme: Theme) => {
+  // 保存：直接覆盖当前主题
+  // 如果是默认主题，先将其转换为自定义主题
   const defaultIds = new Set(DEFAULT_THEMES.map(t => t.id));
   if (defaultIds.has(theme.id)) {
+    // 编辑默认主题后保存：将默认主题的 id 改为自定义 id
     theme.id = `custom-${Date.now()}`;
     theme.isCustom = true;
     theme.name = `${theme.name} (自定义)`;
@@ -260,6 +263,19 @@ const handleSaveTheme = (theme: Theme) => {
   currentThemeId.value = theme.id;
   saveCustomThemes();
   showToast('主题保存成功！', 'success');
+  handleCloseEditor();
+};
+
+/**
+ * 另存为主题
+ * @param theme 保存的主题数据（已生成新 ID）
+ */
+const handleSaveAsTheme = (theme: Theme) => {
+  // 另存为：直接添加为新主题（ID 已在 ThemeEditor 中生成）
+  customThemes.value.push(theme);
+  currentThemeId.value = theme.id;
+  saveCustomThemes();
+  showToast('已另存为新主题！', 'success');
   handleCloseEditor();
 };
 
@@ -390,6 +406,7 @@ onUnmounted(() => {
       :content="contentMarkdown"
       @close="handleCloseEditor"
       @save="handleSaveTheme"
+      @save-as="handleSaveAsTheme"
     />
   </div>
 </template>

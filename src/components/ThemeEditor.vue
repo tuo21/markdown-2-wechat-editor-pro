@@ -22,8 +22,9 @@ interface Props {
 }
 
 interface Emits {
-  (e: 'close'): void;              // 关闭编辑器
-  (e: 'save', theme: Theme): void; // 保存主题
+  (e: 'close'): void;                // 关闭编辑器
+  (e: 'save', theme: Theme): void;  // 保存主题（覆盖当前）
+  (e: 'saveAs', theme: Theme): void; // 另存为主题
 }
 
 const props = defineProps<Props>();
@@ -45,6 +46,11 @@ const activeCategory = ref<'global' | 'headings' | 'blocks' | 'others'>('global'
  * 用于控制折叠面板的展开/收起状态
  */
 const expandedItems = ref<Set<string>>(new Set(['h1', 'h2', 'h3', 'p']));
+
+/**
+ * 是否为新建主题（用于另存为时生成新 ID）
+ */
+const isNewTheme = ref<boolean>(props.theme.isCustom === false);
 
 /**
  * 正在编辑的主题副本
@@ -145,10 +151,10 @@ const toggleExpand = (key: string) => {
 // ==================== 保存和关闭 ====================
 
 /**
- * 保存主题
- * 将样式对象转换回 CSS 字符串格式后发送保存事件
+ * 准备保存的主题对象
+ * 将 editableStyles 转换回 CSS 字符串格式
  */
-const saveTheme = () => {
+const prepareThemeToSave = (): Theme => {
   const newStyles: Record<string, unknown> = {
     global: { ...editingTheme.value.styles.global },
   };
@@ -157,12 +163,32 @@ const saveTheme = () => {
     newStyles[key] = toCSSString(editableStyles.value[key] || {});
   });
 
-  const themeToSave: Theme = {
+  return {
     ...editingTheme.value,
     styles: newStyles as Theme['styles'],
   };
+};
 
+/**
+ * 保存主题（覆盖当前）
+ */
+const handleSave = () => {
+  const themeToSave = prepareThemeToSave();
   emit('save', themeToSave);
+};
+
+/**
+ * 另存为新主题
+ * 生成新的 ID，保存为新主题
+ */
+const handleSaveAs = () => {
+  const themeToSave = prepareThemeToSave();
+  // 生成新 ID
+  themeToSave.id = `custom-${Date.now()}`;
+  themeToSave.isCustom = true;
+  themeToSave.name = `${themeToSave.name} (副本)`;
+  isNewTheme.value = true;
+  emit('saveAs', themeToSave);
 };
 
 /**
@@ -264,11 +290,19 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
         >
           取消
         </button>
+        <!-- 保存按钮：覆盖当前主题 -->
         <button
-          @click="saveTheme"
-          class="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+          @click="handleSave"
+          class="px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
         >
-          保存主题
+          保存
+        </button>
+        <!-- 另存为按钮：另存为新主题 -->
+        <button
+          @click="handleSaveAs"
+          class="px-5 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+        >
+          另存为
         </button>
       </div>
     </div>
