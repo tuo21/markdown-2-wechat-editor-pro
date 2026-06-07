@@ -11,7 +11,7 @@
 
 import { ref, computed, watch } from 'vue';
 import type { Theme, StyleProperties, GlobalStyle } from '../types';
-import { parseCSSString, toCSSString, ensureStyleProperties } from '../utils/styleConverter';
+import { parseCSSString, toCSSString } from '../utils/styleConverter';
 import Preview from './Preview.vue';
 
 // ==================== 组件接口定义 ====================
@@ -58,18 +58,26 @@ const editingTheme = ref<Theme>(JSON.parse(JSON.stringify(props.theme)));
  * 可编辑的样式对象
  * 将主题中的 CSS 字符串转换为对象形式，便于编辑
  */
-const editableStyles = computed(() => {
-  const result: Record<string, StyleProperties> = {};
-  const keys = ['h1', 'h2', 'h3', 'p', 'quote', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'table', 'th', 'td', 'strong', 'em', 'del', 'figcaption'] as const;
-  
-  keys.forEach(key => {
-    const style = editingTheme.value.styles[key];
-    const styleVal: string | StyleProperties = style !== undefined ? style : '';
-    result[key] = ensureStyleProperties(styleVal);
+const STYLE_KEYS = ['h1', 'h2', 'h3', 'p', 'quote', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'table', 'th', 'td', 'strong', 'em', 'del', 'figcaption'] as const;
+
+const editableStyles = ref<Record<string, StyleProperties>>({});
+
+function initEditableStyles(theme: Theme) {
+  const next: Record<string, StyleProperties> = {};
+  STYLE_KEYS.forEach(key => {
+    const raw = theme.styles[key];
+    if (typeof raw === 'string') {
+      next[key] = parseCSSString(raw);
+    } else if (raw && typeof raw === 'object') {
+      next[key] = { ...raw };
+    } else {
+      next[key] = {};
+    }
   });
-  
-  return result;
-});
+  editableStyles.value = next;
+}
+
+initEditableStyles(editingTheme.value);
 
 /**
  * 全局样式的计算属性
@@ -94,8 +102,8 @@ const updateStyle = (elementKey: string, property: string, value: string) => {
   if (!editableStyles.value[elementKey]) {
     editableStyles.value[elementKey] = {};
   }
-  (editableStyles.value[elementKey] as Record<string, string>)[property] = value;
-  (editingTheme.value.styles as Record<string, unknown>)[elementKey] = { ...editableStyles.value[elementKey] };
+  editableStyles.value[elementKey][property] = value;
+  editingTheme.value.styles[elementKey as keyof typeof editingTheme.value.styles] = { ...editableStyles.value[elementKey] } as any;
 };
 
 /**
@@ -113,8 +121,12 @@ const updateGlobalStyle = (property: keyof GlobalStyle, value: string) => {
  */
 const resetStyle = (elementKey: string) => {
   if (props.theme.styles[elementKey as keyof typeof props.theme.styles]) {
-    (editingTheme.value.styles as Record<string, unknown>)[elementKey] = 
-      JSON.parse(JSON.stringify(props.theme.styles[elementKey as keyof typeof props.theme.styles]));
+    const original = props.theme.styles[elementKey as keyof typeof props.theme.styles];
+    (editingTheme.value.styles as Record<string, unknown>)[elementKey] =
+      JSON.parse(JSON.stringify(original));
+    editableStyles.value[elementKey] = typeof original === 'string'
+      ? parseCSSString(original)
+      : { ...(original as StyleProperties) };
   }
 };
 
@@ -137,20 +149,19 @@ const toggleExpand = (key: string) => {
  * 将样式对象转换回 CSS 字符串格式后发送保存事件
  */
 const saveTheme = () => {
+  const newStyles: Record<string, unknown> = {
+    global: { ...editingTheme.value.styles.global },
+  };
+
+  Object.keys(editableStyles.value).forEach(key => {
+    newStyles[key] = toCSSString(editableStyles.value[key] || {});
+  });
+
   const themeToSave: Theme = {
     ...editingTheme.value,
-    styles: {
-      ...editingTheme.value.styles,
-    }
+    styles: newStyles as Theme['styles'],
   };
-  
-  // 将样式对象转换为 CSS 字符串
-  Object.keys(themeToSave.styles).forEach(key => {
-    if (key !== 'global') {
-      (themeToSave.styles as Record<string, unknown>)[key] = toCSSString(ensureStyleProperties((themeToSave.styles as Record<string, unknown>)[key] as StyleProperties));
-    }
-  });
-  
+
   emit('save', themeToSave);
 };
 
@@ -168,6 +179,7 @@ const handleClose = () => {
  */
 watch(() => props.theme, (newTheme) => {
   editingTheme.value = JSON.parse(JSON.stringify(newTheme));
+  initEditableStyles(editingTheme.value);
 }, { immediate: true });
 
 // ==================== 配置数据 ====================

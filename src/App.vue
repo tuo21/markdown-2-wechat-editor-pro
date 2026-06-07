@@ -153,8 +153,8 @@ function unbindSyncScroll() {
  * 所有主题列表 = 默认主题 + 自定义主题
  */
 const allThemes = computed(() => [
+  ...customThemes.value,
   ...DEFAULT_THEMES.map(t => ({ ...t, isCustom: false })),
-  ...customThemes.value
 ]);
 
 /**
@@ -242,6 +242,13 @@ const handleCloseEditor = () => {
  * @param theme 保存的主题数据
  */
 const handleSaveTheme = (theme: Theme) => {
+  const defaultIds = new Set(DEFAULT_THEMES.map(t => t.id));
+  if (defaultIds.has(theme.id)) {
+    theme.id = `custom-${Date.now()}`;
+    theme.isCustom = true;
+    theme.name = `${theme.name} (自定义)`;
+  }
+
   const existingIndex = customThemes.value.findIndex(t => t.id === theme.id);
   if (existingIndex >= 0) {
     // 更新已有主题
