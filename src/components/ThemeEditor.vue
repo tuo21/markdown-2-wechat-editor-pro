@@ -1,12 +1,11 @@
 <script setup lang="ts">
 /**
  * ThemeEditor.vue - 主题编辑器组件
- * 
- * 这是一个全屏侧边栏式的主题编辑器，提供：
- * 1. 左侧样式编辑面板（380px 宽度）
+ *
+ * 全屏侧边栏式主题编辑器，提供：
+ * 1. 左侧样式编辑面板
  * 2. 右侧实时预览区域
- * 3. 支持全局样式、标题、内容块、其他元素四大类
- * 4. 每个元素可独立展开/折叠编辑
+ * 3. 每个元素有专属的编辑选项
  */
 
 import { ref, computed, watch } from 'vue';
@@ -17,14 +16,14 @@ import Preview from './Preview.vue';
 // ==================== 组件接口定义 ====================
 
 interface Props {
-  theme: Theme;      // 要编辑的主题
-  content: string;   // 用于预览的 Markdown 内容
+  theme: Theme;
+  content: string;
 }
 
 interface Emits {
-  (e: 'close'): void;                // 关闭编辑器
-  (e: 'save', theme: Theme): void;  // 保存主题（覆盖当前）
-  (e: 'saveAs', theme: Theme): void; // 另存为主题
+  (e: 'close'): void;
+  (e: 'save', theme: Theme): void;
+  (e: 'saveAs', theme: Theme): void;
 }
 
 const props = defineProps<Props>();
@@ -32,38 +31,13 @@ const emit = defineEmits<Emits>();
 
 // ==================== 状态管理 ====================
 
-/**
- * 当前激活的分类标签
- * - global: 全局样式
- * - headings: 标题样式（H1, H2, H3）
- * - blocks: 内容块样式（段落、引用、代码等）
- * - others: 其他样式（链接、图片、表格等）
- */
 const activeCategory = ref<'global' | 'headings' | 'blocks' | 'others'>('global');
-
-/**
- * 已展开的元素项
- * 用于控制折叠面板的展开/收起状态
- */
 const expandedItems = ref<Set<string>>(new Set(['h1', 'h2', 'h3', 'p']));
-
-/**
- * 是否为新建主题（用于另存为时生成新 ID）
- */
 const isNewTheme = ref<boolean>(props.theme.isCustom === false);
-
-/**
- * 正在编辑的主题副本
- * 使用深拷贝避免直接修改原始主题
- */
 const editingTheme = ref<Theme>(JSON.parse(JSON.stringify(props.theme)));
 
-// ==================== 计算属性 ====================
+// ==================== 样式解析 ====================
 
-/**
- * 可编辑的样式对象
- * 将主题中的 CSS 字符串转换为对象形式，便于编辑
- */
 const STYLE_KEYS = ['h1', 'h2', 'h3', 'p', 'quote', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'img', 'hr', 'table', 'th', 'td', 'strong', 'em', 'del', 'figcaption'] as const;
 
 const editableStyles = ref<Record<string, StyleProperties>>({});
@@ -85,61 +59,30 @@ function initEditableStyles(theme: Theme) {
 
 initEditableStyles(editingTheme.value);
 
-/**
- * 全局样式的计算属性
- * 提供便捷的 getter/setter
- */
-const globalStyle = computed({
-  get: () => editingTheme.value.styles.global,
-  set: (val: GlobalStyle) => {
-    editingTheme.value.styles.global = val;
-  }
-});
+const globalStyle = computed(() => editingTheme.value.styles.global);
 
 // ==================== 样式更新方法 ====================
 
-/**
- * 更新特定元素的样式属性
- * @param elementKey 元素键名（如 'h1', 'p', 'quote' 等）
- * @param property CSS 属性名（如 'color', 'fontSize' 等）
- * @param value 属性值
- */
 const updateStyle = (elementKey: string, property: string, value: string) => {
   if (!editableStyles.value[elementKey]) {
     editableStyles.value[elementKey] = {};
   }
   editableStyles.value[elementKey][property] = value;
-  editingTheme.value.styles[elementKey as keyof typeof editingTheme.value.styles] = { ...editableStyles.value[elementKey] } as any;
+  (editingTheme.value.styles as Record<string, unknown>)[elementKey] = { ...editableStyles.value[elementKey] };
 };
 
-/**
- * 更新全局样式属性
- * @param property 全局样式属性名
- * @param value 属性值
- */
 const updateGlobalStyle = (property: keyof GlobalStyle, value: string) => {
-  (globalStyle.value as Record<string, unknown>)[property] = value;
+  (editingTheme.value.styles.global as Record<string, unknown>)[property] = value;
 };
 
-/**
- * 重置元素样式到原始值
- * @param elementKey 要重置的元素键名
- */
 const resetStyle = (elementKey: string) => {
-  if (props.theme.styles[elementKey as keyof typeof props.theme.styles]) {
-    const original = props.theme.styles[elementKey as keyof typeof props.theme.styles];
-    (editingTheme.value.styles as Record<string, unknown>)[elementKey] =
-      JSON.parse(JSON.stringify(original));
-    editableStyles.value[elementKey] = typeof original === 'string'
-      ? parseCSSString(original)
-      : { ...(original as StyleProperties) };
+  const original = props.theme.styles[elementKey as keyof typeof props.theme.styles];
+  if (original) {
+    (editingTheme.value.styles as Record<string, unknown>)[elementKey] = JSON.parse(JSON.stringify(original));
+    editableStyles.value[elementKey] = typeof original === 'string' ? parseCSSString(original) : { ...(original as StyleProperties) };
   }
 };
 
-/**
- * 切换元素面板的展开/折叠状态
- * @param key 元素键名
- */
 const toggleExpand = (key: string) => {
   if (expandedItems.value.has(key)) {
     expandedItems.value.delete(key);
@@ -148,12 +91,8 @@ const toggleExpand = (key: string) => {
   }
 };
 
-// ==================== 保存和关闭 ====================
+// ==================== 保存逻辑 ====================
 
-/**
- * 准备保存的主题对象
- * 将 editableStyles 转换回 CSS 字符串格式
- */
 const prepareThemeToSave = (): Theme => {
   const newStyles: Record<string, unknown> = {
     global: { ...editingTheme.value.styles.global },
@@ -169,21 +108,13 @@ const prepareThemeToSave = (): Theme => {
   };
 };
 
-/**
- * 保存主题（覆盖当前）
- */
 const handleSave = () => {
   const themeToSave = prepareThemeToSave();
   emit('save', themeToSave);
 };
 
-/**
- * 另存为新主题
- * 生成新的 ID，保存为新主题
- */
 const handleSaveAs = () => {
   const themeToSave = prepareThemeToSave();
-  // 生成新 ID
   themeToSave.id = `custom-${Date.now()}`;
   themeToSave.isCustom = true;
   themeToSave.name = `${themeToSave.name} (副本)`;
@@ -191,28 +122,330 @@ const handleSaveAs = () => {
   emit('saveAs', themeToSave);
 };
 
-/**
- * 关闭编辑器（不保存）
- */
 const handleClose = () => {
   emit('close');
 };
 
-// ==================== 监听器 ====================
-
-/**
- * 监听传入的主题变化，更新编辑副本
- */
 watch(() => props.theme, (newTheme) => {
   editingTheme.value = JSON.parse(JSON.stringify(newTheme));
   initEditableStyles(editingTheme.value);
 }, { immediate: true });
 
-// ==================== 配置数据 ====================
+// ==================== 选项配置数据 ====================
 
-/**
- * 各分类下的元素项配置
- */
+interface StyleOption {
+  key: string;
+  label: string;
+  type: 'color' | 'text' | 'select' | 'margin' | 'padding';
+  options?: { value: string; label: string }[];
+  placeholder?: string;
+}
+
+interface ElementConfig {
+  key: string;
+  label: string;
+  options: StyleOption[];
+  showCssFallback?: boolean;
+}
+
+// 字号选项
+const fontSizeOptions = [
+  { value: '12px', label: '12px' },
+  { value: '14px', label: '14px' },
+  { value: '15px', label: '15px' },
+  { value: '16px', label: '16px' },
+  { value: '17px', label: '17px' },
+  { value: '18px', label: '18px' },
+  { value: '20px', label: '20px' },
+  { value: '21px', label: '21px' },
+  { value: '22px', label: '22px' },
+  { value: '24px', label: '24px' },
+  { value: '26px', label: '26px' },
+  { value: '28px', label: '28px' },
+  { value: '32px', label: '32px' },
+];
+
+// 字重选项
+const fontWeightOptions = [
+  { value: '400', label: '正常 (400)' },
+  { value: '500', label: '中等 (500)' },
+  { value: '600', label: '半粗 (600)' },
+  { value: '700', label: '粗体 (700)' },
+  { value: '800', label: '特粗 (800)' },
+  { value: '900', label: '黑体 (900)' },
+];
+
+// 文本对齐选项
+const textAlignOptions = [
+  { value: 'left', label: '左对齐' },
+  { value: 'center', label: '居中' },
+  { value: 'right', label: '右对齐' },
+  { value: 'justify', label: '两端对齐' },
+];
+
+// 字体样式选项
+const fontStyleOptions = [
+  { value: 'normal', label: '正常' },
+  { value: 'italic', label: '斜体' },
+];
+
+// 文本装饰选项
+const textDecorationOptions = [
+  { value: 'none', label: '无' },
+  { value: 'underline', label: '下划线' },
+  { value: 'line-through', label: '删除线' },
+];
+
+// 边框样式选项
+const borderStyleOptions = [
+  { value: 'solid', label: '实线' },
+  { value: 'dashed', label: '虚线' },
+  { value: 'dotted', label: '点线' },
+  { value: 'double', label: '双线' },
+];
+
+// 元素配置映射
+const ELEMENT_CONFIGS: Record<string, ElementConfig> = {
+  h1: {
+    key: 'h1',
+    label: 'H1 标题',
+    options: [
+      { key: 'color', label: '颜色', type: 'color', placeholder: '#1a1a1a' },
+      { key: 'fontSize', label: '字号', type: 'select', options: fontSizeOptions },
+      { key: 'fontWeight', label: '字重', type: 'select', options: fontWeightOptions },
+      { key: 'lineHeight', label: '行高', type: 'text', placeholder: '1.2' },
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'textAlign', label: '对齐', type: 'select', options: textAlignOptions },
+      { key: 'borderBottomWidth', label: '底边宽度', type: 'text', placeholder: '2px' },
+      { key: 'borderBottomColor', label: '底边颜色', type: 'color' },
+    ],
+    showCssFallback: true,
+  },
+  h2: {
+    key: 'h2',
+    label: 'H2 标题',
+    options: [
+      { key: 'color', label: '颜色', type: 'color', placeholder: '#1a1a1a' },
+      { key: 'fontSize', label: '字号', type: 'select', options: fontSizeOptions },
+      { key: 'fontWeight', label: '字重', type: 'select', options: fontWeightOptions },
+      { key: 'lineHeight', label: '行高', type: 'text', placeholder: '1.3' },
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'textAlign', label: '对齐', type: 'select', options: textAlignOptions },
+      { key: 'borderLeftWidth', label: '左侧宽度', type: 'text', placeholder: '4px' },
+      { key: 'borderLeftColor', label: '左侧颜色', type: 'color' },
+      { key: 'paddingLeft', label: '左侧内边距', type: 'text', placeholder: '12px' },
+    ],
+    showCssFallback: true,
+  },
+  h3: {
+    key: 'h3',
+    label: 'H3 标题',
+    options: [
+      { key: 'color', label: '颜色', type: 'color', placeholder: '#1a1a1a' },
+      { key: 'fontSize', label: '字号', type: 'select', options: fontSizeOptions },
+      { key: 'fontWeight', label: '字重', type: 'select', options: fontWeightOptions },
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'borderLeftWidth', label: '左侧竖线宽度', type: 'text', placeholder: '3px' },
+      { key: 'borderLeftColor', label: '左侧竖线颜色', type: 'color' },
+      { key: 'paddingLeft', label: '左侧内边距', type: 'text', placeholder: '10px' },
+    ],
+    showCssFallback: true,
+  },
+  p: {
+    key: 'p',
+    label: '段落',
+    options: [
+      { key: 'color', label: '颜色', type: 'color', placeholder: '#333333' },
+      { key: 'fontSize', label: '字号', type: 'select', options: fontSizeOptions },
+      { key: 'lineHeight', label: '行高', type: 'text', placeholder: '1.8' },
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'textAlign', label: '对齐', type: 'select', options: textAlignOptions },
+    ],
+    showCssFallback: true,
+  },
+  quote: {
+    key: 'quote',
+    label: '引用',
+    options: [
+      { key: 'borderLeftWidth', label: '左边框宽度', type: 'text', placeholder: '4px' },
+      { key: 'borderLeftColor', label: '左边框颜色', type: 'color' },
+      { key: 'backgroundColor', label: '背景色', type: 'color' },
+      { key: 'color', label: '文字颜色', type: 'color' },
+      { key: 'padding', label: '内边距', type: 'padding' },
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'fontStyle', label: '字体样式', type: 'select', options: fontStyleOptions },
+    ],
+    showCssFallback: true,
+  },
+  code: {
+    key: 'code',
+    label: '行内代码',
+    options: [
+      { key: 'backgroundColor', label: '背景色', type: 'color' },
+      { key: 'color', label: '文字颜色', type: 'color' },
+      { key: 'padding', label: '内边距', type: 'padding' },
+      { key: 'borderRadius', label: '圆角', type: 'text', placeholder: '4px' },
+      { key: 'fontSize', label: '字号', type: 'select', options: fontSizeOptions },
+    ],
+    showCssFallback: true,
+  },
+  pre: {
+    key: 'pre',
+    label: '代码块',
+    options: [
+      { key: 'backgroundColor', label: '背景色', type: 'color' },
+      { key: 'color', label: '文字颜色', type: 'color' },
+      { key: 'padding', label: '内边距', type: 'padding' },
+      { key: 'borderRadius', label: '圆角', type: 'text', placeholder: '8px' },
+    ],
+    showCssFallback: true,
+  },
+  ul: {
+    key: 'ul',
+    label: '无序列表',
+    options: [
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'padding', label: '内边距', type: 'padding' },
+    ],
+  },
+  ol: {
+    key: 'ol',
+    label: '有序列表',
+    options: [
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'padding', label: '内边距', type: 'padding' },
+    ],
+  },
+  li: {
+    key: 'li',
+    label: '列表项',
+    options: [
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'lineHeight', label: '行高', type: 'text', placeholder: '1.8' },
+    ],
+  },
+  a: {
+    key: 'a',
+    label: '链接',
+    options: [
+      { key: 'color', label: '颜色', type: 'color' },
+      { key: 'textDecoration', label: '装饰线', type: 'select', options: textDecorationOptions },
+    ],
+  },
+  img: {
+    key: 'img',
+    label: '图片',
+    options: [
+      { key: 'maxWidth', label: '最大宽度', type: 'text', placeholder: '100%' },
+      { key: 'borderRadius', label: '圆角', type: 'text', placeholder: '8px' },
+      { key: 'margin', label: '外边距', type: 'margin' },
+      { key: 'boxShadow', label: '阴影', type: 'text', placeholder: '0 4px 12px rgba(0,0,0,0.1)' },
+    ],
+    showCssFallback: true,
+  },
+  hr: {
+    key: 'hr',
+    label: '分割线',
+    options: [
+      { key: 'borderTopWidth', label: '线条粗细', type: 'text', placeholder: '1px' },
+      { key: 'borderTopStyle', label: '线条样式', type: 'select', options: borderStyleOptions },
+      { key: 'borderTopColor', label: '线条颜色', type: 'color' },
+      { key: 'margin', label: '外边距', type: 'margin' },
+    ],
+  },
+  table: {
+    key: 'table',
+    label: '表格',
+    options: [
+      { key: 'width', label: '宽度', type: 'text', placeholder: '100%' },
+      { key: 'margin', label: '外边距', type: 'margin' },
+    ],
+  },
+  th: {
+    key: 'th',
+    label: '表头',
+    options: [
+      { key: 'backgroundColor', label: '背景色', type: 'color' },
+      { key: 'color', label: '文字颜色', type: 'color' },
+      { key: 'fontWeight', label: '字重', type: 'select', options: fontWeightOptions },
+      { key: 'padding', label: '内边距', type: 'padding' },
+      { key: 'border', label: '边框', type: 'text', placeholder: '1px solid #e5e5e5' },
+      { key: 'textAlign', label: '对齐', type: 'select', options: textAlignOptions },
+    ],
+    showCssFallback: true,
+  },
+  td: {
+    key: 'td',
+    label: '单元格',
+    options: [
+      { key: 'backgroundColor', label: '背景色', type: 'color' },
+      { key: 'color', label: '文字颜色', type: 'color' },
+      { key: 'padding', label: '内边距', type: 'padding' },
+      { key: 'border', label: '边框', type: 'text', placeholder: '1px solid #e5e5e5' },
+      { key: 'textAlign', label: '对齐', type: 'select', options: textAlignOptions },
+    ],
+    showCssFallback: true,
+  },
+  strong: {
+    key: 'strong',
+    label: '加粗',
+    options: [
+      { key: 'fontWeight', label: '字重', type: 'select', options: fontWeightOptions },
+      { key: 'color', label: '颜色', type: 'color' },
+    ],
+  },
+  em: {
+    key: 'em',
+    label: '斜体',
+    options: [
+      { key: 'fontStyle', label: '字体样式', type: 'select', options: fontStyleOptions },
+      { key: 'color', label: '颜色', type: 'color' },
+    ],
+  },
+  del: {
+    key: 'del',
+    label: '删除线',
+    options: [
+      { key: 'textDecoration', label: '删除线样式', type: 'select', options: textDecorationOptions },
+      { key: 'color', label: '颜色', type: 'color' },
+    ],
+  },
+  figcaption: {
+    key: 'figcaption',
+    label: '图片说明',
+    options: [
+      { key: 'fontSize', label: '字号', type: 'select', options: fontSizeOptions },
+      { key: 'textAlign', label: '对齐', type: 'select', options: textAlignOptions },
+      { key: 'color', label: '颜色', type: 'color' },
+      { key: 'margin', label: '外边距', type: 'margin' },
+    ],
+    showCssFallback: true,
+  },
+};
+
+// ==================== 辅助方法 ====================
+
+function getFontStack(type: 'serif' | 'sans-serif'): string {
+  const stacks: Record<'serif' | 'sans-serif', string> = {
+    'sans-serif': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif',
+    'serif': '"Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, "Times New Roman", Optima-Regular, Cambria, Cochin, serif',
+  };
+  return stacks[type];
+}
+
+const getElementConfig = (key: string): ElementConfig | undefined => {
+  return ELEMENT_CONFIGS[key];
+};
+
+const getStyleValue = (key: string, propKey: string): string => {
+  const styles = editableStyles.value[key];
+  if (!styles) return '';
+  const value = styles[propKey as keyof StyleProperties];
+  return typeof value === 'string' ? value : '';
+};
+
+// ==================== 分类配置 ====================
+
 const categoryItems = {
   global: [],
   headings: [
@@ -242,39 +475,15 @@ const categoryItems = {
     { key: 'figcaption', label: '图片说明' },
   ],
 };
-
-/**
- * 字体大小预设选项
- */
-const fontSizeOptions = ['12px', '14px', '15px', '16px', '18px', '20px', '22px', '24px', '26px', '28px', '32px'];
-
-/**
- * 字重预设选项
- */
-const fontWeightOptions = ['400', '500', '600', '700', '800', '900'];
-
-/**
- * 根据字体类型获取推荐字体栈
- */
-function getFontStack(type: 'serif' | 'sans-serif'): string {
-  const stacks: Record<'serif' | 'sans-serif', string> = {
-    'sans-serif': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif',
-    'serif': '"Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, "Times New Roman", Optima-Regular, Cambria, Cochin, serif',
-  };
-  return stacks[type];
-}
 </script>
 
 <template>
-  <!-- 全屏容器：固定定位，覆盖整个视口，z-index 高于遮罩层，白色背景 -->
   <div class="fixed inset-0 z-[60] flex flex-col bg-white dark:bg-gray-900">
-    
-    <!-- 顶部标题栏：白色背景，带底部边框和阴影 -->
+
+    <!-- 顶部标题栏 -->
     <div class="flex items-center justify-between px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm flex-shrink-0">
-      <!-- 左侧：标题和主题名称输入 -->
       <div class="flex items-center gap-4">
         <h2 class="text-xl font-bold text-gray-800 dark:text-white">主题编辑器</h2>
-        <!-- 主题名称输入框 -->
         <input
           v-model="editingTheme.name"
           type="text"
@@ -282,7 +491,6 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
           placeholder="主题名称"
         />
       </div>
-      <!-- 右侧：操作按钮 -->
       <div class="flex items-center gap-3">
         <button
           @click="handleClose"
@@ -290,14 +498,12 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
         >
           取消
         </button>
-        <!-- 保存按钮：覆盖当前主题 -->
         <button
           @click="handleSave"
           class="px-5 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
         >
           保存
         </button>
-        <!-- 另存为按钮：另存为新主题 -->
         <button
           @click="handleSaveAs"
           class="px-5 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
@@ -307,12 +513,11 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
       </div>
     </div>
 
-    <!-- 主内容区：左右分栏 -->
+    <!-- 主内容区 -->
     <div class="flex-1 flex overflow-hidden">
-      
-      <!-- ==================== 左侧：样式编辑面板 ==================== -->
-      <div class="w-[400px] flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-        
+      <!-- 左侧：样式编辑面板 -->
+      <div class="w-[420px] flex flex-col bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+
         <!-- 分类标签栏 -->
         <div class="flex border-b border-gray-200 dark:border-gray-700">
           <button
@@ -335,12 +540,12 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
           </button>
         </div>
 
-        <!-- 样式编辑区域（可滚动） -->
-        <div class="flex-1 overflow-y-auto p-4 space-y-4">
-          
+        <!-- 样式编辑区域 -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-3">
+
           <!-- ===== 全局样式编辑 ===== -->
           <div v-if="activeCategory === 'global'" class="space-y-4">
-            <!-- 主题颜色（统一装饰色） -->
+            <!-- 主题颜色 -->
             <div class="space-y-2">
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300">主题颜色</label>
               <div class="flex items-center gap-2">
@@ -358,7 +563,7 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
                   placeholder="#c9a96e"
                 />
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">统一控制标题装饰、边框、强调等色彩，各元素可单独覆盖</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">统一控制标题装饰、边框、强调等色彩</p>
             </div>
 
             <!-- 背景颜色 -->
@@ -367,7 +572,7 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
               <div class="flex items-center gap-2">
                 <input
                   type="color"
-                  :value="globalStyle.backgroundColor"
+                  :value="globalStyle.backgroundColor || '#ffffff'"
                   @input="(e) => updateGlobalStyle('backgroundColor', (e.target as HTMLInputElement).value)"
                   class="w-10 h-10 rounded-lg border border-gray-300 dark:border-gray-600 cursor-pointer"
                 />
@@ -380,7 +585,31 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
               </div>
             </div>
 
-            <!-- 字体类型：衬线体 / 非衬线体 -->
+            <!-- 默认字号 -->
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">默认字号</label>
+              <select
+                :value="globalStyle.fontSize || '15px'"
+                @change="(e) => updateGlobalStyle('fontSize', (e.target as HTMLSelectElement).value)"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
+              >
+                <option v-for="opt in fontSizeOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+              </select>
+            </div>
+
+            <!-- 默认行高 -->
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">默认行高</label>
+              <input
+                type="text"
+                :value="globalStyle.lineHeight || '1.8'"
+                @input="(e) => updateGlobalStyle('lineHeight', (e.target as HTMLInputElement).value)"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
+                placeholder="1.8"
+              />
+            </div>
+
+            <!-- 字体类型 -->
             <div class="space-y-2">
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300">字体类型</label>
               <div class="flex gap-3">
@@ -391,7 +620,7 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
                     'flex-1 px-3 py-2 rounded-lg border text-sm transition-colors',
                     (globalStyle.fontType || 'sans-serif') === 'sans-serif'
                       ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
+                      : 'border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
                   ]"
                 >
                   非衬线（黑体）
@@ -403,13 +632,12 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
                     'flex-1 px-3 py-2 rounded-lg border text-sm transition-colors',
                     globalStyle.fontType === 'serif'
                       ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
+                      : 'border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200'
                   ]"
                 >
                   衬线（宋体）
                 </button>
               </div>
-              <p class="text-xs text-gray-500 dark:text-gray-400">切换字体类型后自动填充推荐字体栈</p>
             </div>
 
             <!-- 自定义字体 -->
@@ -417,12 +645,11 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300">自定义字体</label>
               <input
                 type="text"
-                :value="globalStyle.fontFamily"
-                @input="(e) => { updateGlobalStyle('fontFamily', (e.target as HTMLInputElement).value); }"
+                :value="globalStyle.fontFamily || ''"
+                @input="(e) => updateGlobalStyle('fontFamily', (e.target as HTMLInputElement).value)"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
-                placeholder="留空使用默认字体栈，或输入自定义字体..."
+                placeholder="留空使用默认字体栈"
               />
-              <p class="text-xs text-gray-500 dark:text-gray-400">输入后将忽略上方字体类型选择，完全自定义</p>
             </div>
 
             <!-- 容器内边距 -->
@@ -433,171 +660,154 @@ function getFontStack(type: 'serif' | 'sans-serif'): string {
                 :value="globalStyle.containerPadding || '25px 8px'"
                 @input="(e) => updateGlobalStyle('containerPadding', (e.target as HTMLInputElement).value)"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm"
-                placeholder="如: 25px 8px（上下 左右）"
+                placeholder="25px 8px"
               />
-              <p class="text-xs text-gray-500 dark:text-gray-400">预览区内容区域的内边距，格式同 CSS padding</p>
             </div>
           </div>
 
-          <!-- ===== 元素样式编辑（标题、内容块、其他） ===== -->
-          <div v-else class="space-y-2">
-            <div
-              v-for="item in categoryItems[activeCategory]"
-              :key="item.key"
-              class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
-            >
-              <!-- 可折叠的标题栏 -->
-              <button
-                @click="toggleExpand(item.key)"
-                class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          <!-- ===== 元素样式编辑 ===== -->
+          <div v-else class="space-y-3">
+            <template v-for="item in categoryItems[activeCategory]" :key="item.key">
+              <div
+                class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
               >
-                <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ item.label }}</span>
-                <!-- 展开箭头图标 -->
-                <svg
-                  :class="['w-4 h-4 text-gray-500 transition-transform', expandedItems.has(item.key) ? 'rotate-180' : '']"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+                <!-- 可折叠标题栏 -->
+                <button
+                  @click="toggleExpand(item.key)"
+                  class="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                 >
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              <!-- 展开后的编辑表单 -->
-              <div v-if="expandedItems.has(item.key)" class="p-4 space-y-3 bg-white dark:bg-gray-800">
-                <!-- 重置按钮 -->
-                <div class="flex justify-end">
-                  <button
-                    @click="resetStyle(item.key)"
-                    class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                  <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ item.label }}</span>
+                  <svg
+                    :class="['w-4 h-4 text-gray-500 transition-transform', expandedItems.has(item.key) ? 'rotate-180' : '']"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
-                    重置
-                  </button>
-                </div>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
 
-                <!-- 样式属性网格 -->
-                <div class="grid grid-cols-2 gap-3">
-                  <!-- 文字颜色 -->
-                  <div class="space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">颜色</label>
-                    <div class="flex items-center gap-2">
-                      <input
-                        type="color"
-                        :value="editableStyles[item.key]?.color || '#000000'"
-                        @input="(e) => updateStyle(item.key, 'color', (e.target as HTMLInputElement).value)"
-                        class="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer flex-shrink-0"
-                      />
-                      <input
-                        type="text"
-                        :value="editableStyles[item.key]?.color || ''"
-                        @input="(e) => updateStyle(item.key, 'color', (e.target as HTMLInputElement).value)"
-                        class="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- 背景颜色 -->
-                  <div class="space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">背景色</label>
-                    <div class="flex items-center gap-2">
-                      <input
-                        type="color"
-                        :value="editableStyles[item.key]?.backgroundColor || '#ffffff'"
-                        @input="(e) => updateStyle(item.key, 'backgroundColor', (e.target as HTMLInputElement).value)"
-                        class="w-10 h-10 rounded border border-gray-300 dark:border-gray-600 cursor-pointer flex-shrink-0"
-                      />
-                      <input
-                        type="text"
-                        :value="editableStyles[item.key]?.backgroundColor || ''"
-                        @input="(e) => updateStyle(item.key, 'backgroundColor', (e.target as HTMLInputElement).value)"
-                        class="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
-                      />
-                    </div>
-                  </div>
-
-                  <!-- 字体大小 -->
-                  <div class="space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">字体大小</label>
-                    <select
-                      :value="editableStyles[item.key]?.fontSize || ''"
-                      @change="(e) => updateStyle(item.key, 'fontSize', (e.target as HTMLSelectElement).value)"
-                      class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
+                <!-- 编辑表单 -->
+                <div v-if="expandedItems.has(item.key)" class="p-4 space-y-3 bg-white dark:bg-gray-800">
+                  <!-- 重置按钮 -->
+                  <div class="flex justify-end">
+                    <button
+                      @click="resetStyle(item.key)"
+                      class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      <option value="">默认</option>
-                      <option v-for="size in fontSizeOptions" :key="size" :value="size">{{ size }}</option>
-                    </select>
+                      重置
+                    </button>
                   </div>
 
-                  <!-- 字重 -->
-                  <div class="space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">字重</label>
-                    <select
-                      :value="editableStyles[item.key]?.fontWeight || ''"
-                      @change="(e) => updateStyle(item.key, 'fontWeight', (e.target as HTMLSelectElement).value)"
-                      class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
-                    >
-                      <option value="">默认</option>
-                      <option v-for="fw in fontWeightOptions" :key="fw" :value="fw">{{ fw }}</option>
-                    </select>
+                  <!-- 选项列表 -->
+                  <div class="space-y-2">
+                    <template v-for="option in getElementConfig(item.key)?.options" :key="option.key">
+                      <!-- 颜色选择器 -->
+                      <div v-if="option.type === 'color'" class="space-y-1">
+                        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ option.label }}</label>
+                        <div class="flex items-center gap-2">
+                          <input
+                            type="color"
+                            :value="getStyleValue(item.key, option.key) || '#000000'"
+                            @input="(e) => updateStyle(item.key, option.key, (e.target as HTMLInputElement).value)"
+                            class="w-9 h-9 rounded border border-gray-300 dark:border-gray-600 cursor-pointer flex-shrink-0"
+                          />
+                          <input
+                            type="text"
+                            :value="getStyleValue(item.key, option.key)"
+                            @input="(e) => updateStyle(item.key, option.key, (e.target as HTMLInputElement).value)"
+                            class="flex-1 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
+                            :placeholder="option.placeholder"
+                          />
+                        </div>
+                      </div>
+
+                      <!-- 下拉选择 -->
+                      <div v-else-if="option.type === 'select'" class="space-y-1">
+                        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ option.label }}</label>
+                        <select
+                          :value="getStyleValue(item.key, option.key)"
+                          @change="(e) => updateStyle(item.key, option.key, (e.target as HTMLSelectElement).value)"
+                          class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
+                        >
+                          <option value="">默认</option>
+                          <option
+                            v-for="opt in option.options"
+                            :key="opt.value"
+                            :value="opt.value"
+                          >
+                            {{ opt.label }}
+                          </option>
+                        </select>
+                      </div>
+
+                      <!-- 文本输入 -->
+                      <div v-else-if="option.type === 'text'" class="space-y-1">
+                        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ option.label }}</label>
+                        <input
+                          type="text"
+                          :value="getStyleValue(item.key, option.key)"
+                          @input="(e) => updateStyle(item.key, option.key, (e.target as HTMLInputElement).value)"
+                          class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
+                          :placeholder="option.placeholder"
+                        />
+                      </div>
+
+                      <!-- 外边距 -->
+                      <div v-else-if="option.type === 'margin'" class="space-y-1">
+                        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ option.label }}</label>
+                        <input
+                          type="text"
+                          :value="getStyleValue(item.key, option.key)"
+                          @input="(e) => updateStyle(item.key, option.key, (e.target as HTMLInputElement).value)"
+                          class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
+                          placeholder="如: 16px 0"
+                        />
+                      </div>
+
+                      <!-- 内边距 -->
+                      <div v-else-if="option.type === 'padding'" class="space-y-1">
+                        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">{{ option.label }}</label>
+                        <input
+                          type="text"
+                          :value="getStyleValue(item.key, option.key)"
+                          @input="(e) => updateStyle(item.key, option.key, (e.target as HTMLInputElement).value)"
+                          class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
+                          placeholder="如: 12px"
+                        />
+                      </div>
+                    </template>
                   </div>
 
-                  <!-- 外边距 -->
-                  <div class="space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">外边距</label>
-                    <input
-                      type="text"
-                      :value="editableStyles[item.key]?.margin || ''"
-                      @input="(e) => updateStyle(item.key, 'margin', (e.target as HTMLInputElement).value)"
-                      class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
-                      placeholder="如: 16px 0"
+                  <!-- CSS 回退输入 -->
+                  <div v-if="getElementConfig(item.key)?.showCssFallback" class="space-y-1 pt-2 border-t border-gray-200 dark:border-gray-700">
+                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">其他 CSS</label>
+                    <textarea
+                      :value="toCSSString(editableStyles[item.key] || {})"
+                      @input="(e) => {
+                        const parsed = parseCSSString((e.target as HTMLTextAreaElement).value);
+                        Object.keys(parsed).forEach(key => {
+                          updateStyle(item.key, key, parsed[key] || '');
+                        });
+                      }"
+                      class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-mono text-xs"
+                      rows="2"
+                      placeholder="如: letter-spacing: 2px;"
                     />
                   </div>
-
-                  <!-- 内边距 -->
-                  <div class="space-y-1">
-                    <label class="text-xs font-medium text-gray-600 dark:text-gray-400">内边距</label>
-                    <input
-                      type="text"
-                      :value="editableStyles[item.key]?.padding || ''"
-                      @input="(e) => updateStyle(item.key, 'padding', (e.target as HTMLInputElement).value)"
-                      class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-xs"
-                      placeholder="如: 8px 16px"
-                    />
-                  </div>
-                </div>
-
-                <!-- 其他样式（CSS 文本） -->
-                <div class="space-y-1">
-                  <label class="text-xs font-medium text-gray-600 dark:text-gray-400">其他样式 (CSS)</label>
-                  <textarea
-                    :value="toCSSString(editableStyles[item.key] || {})"
-                    @input="(e) => {
-                      const parsed = parseCSSString((e.target as HTMLTextAreaElement).value);
-                      Object.keys(parsed).forEach(key => {
-                        updateStyle(item.key, key, parsed[key] || '');
-                      });
-                    }"
-                    class="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-mono text-xs"
-                    rows="3"
-                    placeholder="border-radius: 8px; border-left: 4px solid #000;"
-                  />
                 </div>
               </div>
-            </div>
+            </template>
           </div>
         </div>
       </div>
 
-      <!-- ==================== 右侧：实时预览区域 ==================== -->
+      <!-- 右侧：实时预览 -->
       <div class="flex-1 flex flex-col bg-gray-100 dark:bg-gray-800">
-        <!-- 预览标题 -->
         <div class="flex items-center justify-center px-4 py-2 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <span class="text-sm font-medium text-gray-600 dark:text-gray-400">实时预览</span>
         </div>
-        
-        <!-- 预览内容区 -->
         <div class="flex-1 flex items-center justify-center p-8 overflow-auto">
-          <!-- 直接使用 Preview 组件，不添加额外装饰 -->
           <Preview
             :content="content"
             :theme="editingTheme"
