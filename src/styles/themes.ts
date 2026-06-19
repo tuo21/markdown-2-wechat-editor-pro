@@ -319,4 +319,94 @@ export const DEFAULT_THEMES: Theme[] = [
       figcaption: 'color: #3a3a3a; font-size: 14px; text-align: center; margin: 0 0 20px;',
     },
   },
+
+  // ==================== 暖系杂志风（提取自「阿德记」公众号文章） ====================
+  {
+    id: 'warm-magazine',
+    name: '暖系杂志风',
+    description: '提取自「阿德记」公众号文章的暖色调杂志风格，米黄底色 + 衬线标题 + 蓝橙撞色点缀，适合故事、随笔、观点类长文',
+    styles: {
+      /* ═══ 全局基础：米黄暖底 + 系统无衬线正文字体 ═══ */
+      global: {
+        fontSize: '15px',
+        lineHeight: '1.9',
+        color: '#34373a',           // 深炭灰正文
+        backgroundColor: '#fffdf8', // 暖米黄底色（原文特征）
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+        containerPadding: '18px 16px',
+        themeColor: '#315fae',      // 主题色：杂志蓝
+        fontType: 'sans-serif',     // 正文用无衬线，标题用衬线，形成对比
+      },
+
+      /* ═══ 衬线字体族（标题/引用专用，下文复用） ═══ */
+      // 用 CSS 变量记录衬线字体，便于在 H1~H3、引用中统一引用风格
+      // 实际值："Songti SC", STSong, "Noto Serif CJK SC", "Source Han Serif SC", serif
+
+      /* ═══ H1：章节大标题（原文 H2 章节标题 + 顶部分隔线） ═══ */
+      // 顶部细分割线 + 衬线大标题，字距收紧，呈现杂志感
+      h1: 'margin: 56px 0 22px; padding-top: 19px; border-top: 1px solid #ddd6ca; color: #24282d; font-size: 26px; line-height: 1.4; letter-spacing: -0.02em; font-weight: bold; font-family: "Songti SC", STSong, "Noto Serif CJK SC", "Source Han Serif SC", serif;',
+
+      /* ═══ H2：中号衬线副标题 ═══ */
+      h2: 'margin: 32px 0 14px; color: #24282d; font-size: 21px; line-height: 1.45; letter-spacing: -0.01em; font-weight: bold; font-family: "Songti SC", STSong, "Noto Serif CJK SC", "Source Han Serif SC", serif;',
+
+      /* ═══ H3：蓝色竖条标记小标题 ═══ */
+      // 左侧蓝色竖条 + 衬线字体，呼应原文强调色
+      h3: 'margin: 26px 0 10px; padding-left: 12px; border-left: 3px solid #315fae; color: #263c5e; font-size: 18px; line-height: 1.5; font-weight: bold; font-family: "Songti SC", STSong, "Noto Serif CJK SC", "Source Han Serif SC", serif;',
+
+      /* ═══ 正文段落 P ═══ */
+      // 两端对齐、行高 1.9、段后留白 1.15em（原文阅读节奏）
+      p: 'margin: 0 0 1.15em; padding: 0; text-align: justify; text-justify: inter-ideograph; color: #34373a; font-size: 15px; line-height: 1.9;',
+
+      /* ═══ 引用块 BLOCKQUOTE（蓝色渐变 pull quote） ═══ */
+      // 蓝色左边框 + 蓝米渐变背景 + 衬线粗体引文（原文核心视觉）
+      quote: 'margin: 34px 0; padding: 22px 24px; border-left: 4px solid #315fae; background: linear-gradient(135deg, #e8eef8, #f7f4ec); color: #263c5e; font-size: 17px; line-height: 1.75; font-weight: 500; font-family: "Songti SC", STSong, "Noto Serif CJK SC", "Source Han Serif SC", serif;',
+
+      /* ═══ 行内代码 CODE（暖灰底 + 棕红字） ═══ */
+      code: 'padding: 2px 6px; background: #f2f0ea; color: #8e412d; border-radius: 3px; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 14px;',
+
+      /* ═══ 代码块 PRE（暖色调深色底） ═══ */
+      pre: 'margin: 20px 0; padding: 18px; background: #2d2a24; color: #e8e4d9; border-radius: 4px; overflow-x: auto; line-height: 1.6; font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;',
+
+      /* ═══ 无序列表 UL ═══ */
+      ul: 'margin: 16px 0; padding-left: 26px; color: #34373a; list-style-type: disc;',
+
+      /* ═══ 有序列表 OL ═══ */
+      ol: 'margin: 16px 0; padding-left: 26px; color: #34373a; list-style-type: decimal;',
+
+      /* ═══ 列表项 LI ═══ */
+      li: 'margin: 6px 0; line-height: 1.9; color: #34373a;',
+
+      /* ═══ 链接 A（杂志蓝 + 细下划线） ═══ */
+      a: 'color: #315fae; text-decoration: none; border-bottom: 1px solid rgba(49, 95, 174, 0.3);',
+
+      /* ═══ 图片 IMG（原图无圆角、无阴影，居中展示） ═══ */
+      img: 'max-width: 100%; height: auto; display: block; margin: 24px auto; border-radius: 0; box-shadow: none;',
+
+      /* ═══ 分割线 HR（暖灰细线，章节分隔） ═══ */
+      hr: 'border: none; border-top: 1px solid #ddd6ca; margin: 48px 0;',
+
+      /* ═══ 表格 TABLE ═══ */
+      table: 'width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;',
+
+      /* ═══ 表头 TH（暖灰底 + 深炭字） ═══ */
+      th: 'padding: 11px 14px; border: 1px solid #ddd6ca; background: #f2f0ea; text-align: left; font-weight: bold; color: #24282d;',
+
+      /* ═══ 单元格 TD ═══ */
+      td: 'padding: 10px 14px; border: 1px solid #e2ddd3; color: #34373a;',
+
+      /* ═══ 扩展样式 ═══ */
+
+      // 加粗：近黑色强调（与正文灰形成对比）
+      strong: 'color: #24282d; font-weight: bold;',
+
+      // 斜体：赤陶橙强调（呼应原文 em 的珊瑚色点缀）
+      em: 'color: #d86543; font-style: italic;',
+
+      // 删除线：暖灰
+      del: 'color: #9a958c; text-decoration: line-through;',
+
+      // 图片说明文字：小号暖灰、居中（原文图注特征）
+      figcaption: 'margin: 6px 0 18px; color: #9a958c; font-size: 12px; text-align: center;',
+    },
+  },
 ];
